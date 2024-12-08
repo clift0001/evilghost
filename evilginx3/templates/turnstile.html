@@ -1,32 +1,72 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<title>Cloudflare</title>
+  <title>Cloudflare</title>
+  <style>
+    /* Basic styling for the form container */
+    .form-container {
+      position: absolute;
+      width: 300px;
+      height: 200px;
+      z-index: 15;
+      top: 50%;
+      left: 50%;
+      margin: -100px 0 0 -150px;
+    }
+
+    /* Styling for the button input elements */
+    input[type=button], input[type=submit], input[type=reset] {
+      background-color: #2374f7;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      padding: 5px 15px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    /* Media queries for responsive design */
+    @media only screen and (max-width: 768px) {
+      .form-container {
+        width: 250px;
+        height: auto;
+        margin-top: -120px; /* Adjusting margin for smaller screens */
+        margin-left: -125px;
+      }
+      input[type=submit] {
+        font-size: 14px; /* Smaller font size for smaller screens */
+        padding: 5px 12px;
+      }
+    }
+
+    @media only screen and (max-width: 480px) {
+      .form-container {
+        width: 200px;
+        height: auto;
+        margin-top: -110px;
+        margin-left: -100px;
+      }
+      input[type=submit] {
+        font-size: 12px; /* Even smaller font size for very small screens */
+        padding: 4px 10px;
+      }
+    }
+
+  </style>
 </head>
 <body>
-<div style="position: absolute; width: 300px; height: 200px; z-index: 15; top: 50%; left: 50%; margin: -100px 0 0 -150px;">
-<style>
-  input[type=button], input[type=submit], input[type=reset] {
-    background-color: #2374f7; 
-    border: none;
-    border-radius: 5px; 
-    color: white;
-    padding: 5px 15px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin-top: 10px;
-  } 
-</style>
-{{if .ErrorMessage}}
-<p>{{.ErrorMessage}}</p>
-{{end}}
-<form action="{{.FormActionURL}}" method="POST">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    <div class="cf-turnstile" data-sitekey="{{.TurnstilePublicKey}}"></div>
-    <input type="submit" name="button" value="Submit">
-</form>
-</div>
+  <div class="form-container">
+    {{if .ErrorMessage}}
+      <p>{{.ErrorMessage}}</p>
+    {{end}}
+    <form action="{{.FormActionURL}}" method="POST">
+      <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+      <div class="cf-turnstile" data-sitekey="{{.TurnstilePublicKey}}"></div>
+      <input type="submit" name="button" value="Submit">
+    </form>
+  </div>
 </body>
 </html>
