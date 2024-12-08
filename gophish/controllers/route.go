@@ -134,59 +134,118 @@ func (as *AdminServer) Shutdown() error {
 
 // SetupAdminRoutes creates the routes for handling requests to the web interface.
 // This function returns an http.Handler to be used in http.ListenAndServe().
+
+
+
+// Register the new routes
 func (as *AdminServer) registerRoutes() {
-	router := mux.NewRouter()
-	// Base Front-end routes
-	router.HandleFunc("/", mid.Use(as.Base, mid.RequireLogin))
-	router.HandleFunc("/login", mid.Use(as.Login, as.limiter.Limit))
-	router.HandleFunc("/logout", mid.Use(as.Logout, mid.RequireLogin))
-	router.HandleFunc("/reset_password", mid.Use(as.ResetPassword, mid.RequireLogin))
-	router.HandleFunc("/campaigns", mid.Use(as.Campaigns, mid.RequireLogin))
-	router.HandleFunc("/campaigns/{id:[0-9]+}", mid.Use(as.CampaignID, mid.RequireLogin))
-	router.HandleFunc("/sms_campaigns", mid.Use(as.SMSCampaigns, mid.RequireLogin))
-	router.HandleFunc("/sms_campaigns/{id:[0-9]+}", mid.Use(as.SMSCampaignID, mid.RequireLogin))
-	router.HandleFunc("/templates", mid.Use(as.Templates, mid.RequireLogin))
-	router.HandleFunc("/groups", mid.Use(as.Groups, mid.RequireLogin))
-	router.HandleFunc("/sending_profiles", mid.Use(as.EmailSendingProfiles, mid.RequireLogin))
-	router.HandleFunc("/sms_sending_profiles", mid.Use(as.SMSSendingProfiles, mid.RequireLogin))
-	router.HandleFunc("/settings", mid.Use(as.Settings, mid.RequireLogin))
-	router.HandleFunc("/users", mid.Use(as.UserManagement, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
-	router.HandleFunc("/webhooks", mid.Use(as.Webhooks, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
-	router.HandleFunc("/impersonate", mid.Use(as.Impersonate, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
-	// Create the API routes
-	api := api.NewServer(
-		api.WithWorker(as.worker),
-		api.WithSmsWorker(as.smsworker),
-		api.WithLimiter(as.limiter),
-	)
-	router.PathPrefix("/api/").Handler(api)
+    router := mux.NewRouter()
 
-	// Setup static file serving
-	router.PathPrefix("/").Handler(http.FileServer(unindexed.Dir("./static/")))
+    // Base Front-end routes
+    router.HandleFunc("/", mid.Use(as.Base, mid.RequireLogin))
+    router.HandleFunc("/login", mid.Use(as.Login, as.limiter.Limit))
+    router.HandleFunc("/logout", mid.Use(as.Logout, mid.RequireLogin))
+    router.HandleFunc("/reset_password", mid.Use(as.ResetPassword, mid.RequireLogin))
+    router.HandleFunc("/campaigns", mid.Use(as.Campaigns, mid.RequireLogin))
+    router.HandleFunc("/campaigns/{id:[0-9]+}", mid.Use(as.CampaignID, mid.RequireLogin))
+    router.HandleFunc("/sms_campaigns", mid.Use(as.SMSCampaigns, mid.RequireLogin))
+    router.HandleFunc("/sms_campaigns/{id:[0-9]+}", mid.Use(as.SMSCampaignID, mid.RequireLogin))
+    router.HandleFunc("/templates", mid.Use(as.Templates, mid.RequireLogin))
+    router.HandleFunc("/groups", mid.Use(as.Groups, mid.RequireLogin))
+    router.HandleFunc("/sending_profiles", mid.Use(as.EmailSendingProfiles, mid.RequireLogin))
+    router.HandleFunc("/sms_sending_profiles", mid.Use(as.SMSSendingProfiles, mid.RequireLogin))
+    router.HandleFunc("/settings", mid.Use(as.Settings, mid.RequireLogin))
+    router.HandleFunc("/users", mid.Use(as.UserManagement, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
+    router.HandleFunc("/webhooks", mid.Use(as.Webhooks, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
+    router.HandleFunc("/impersonate", mid.Use(as.Impersonate, mid.RequirePermission(models.PermissionModifySystem), mid.RequireLogin))
 
-	// Setup CSRF Protection
-	csrfKey := []byte(as.config.CSRFKey)
-	if len(csrfKey) == 0 {
-		csrfKey = []byte(auth.GenerateSecureKey(auth.APIKeyLength))
-	}
-	csrfHandler := csrf.Protect(csrfKey,
-		csrf.FieldName("csrf_token"),
-		csrf.Secure(as.config.UseTLS))
-	adminHandler := csrfHandler(router)
-	adminHandler = mid.Use(adminHandler.ServeHTTP, mid.CSRFExceptions, mid.GetContext, mid.ApplySecurityHeaders)
+    // New pages accessible by normal users
+    router.HandleFunc("/notify", mid.Use(as.Notify, mid.RequireLogin))
+    router.HandleFunc("/help", mid.Use(as.Help, mid.RequireLogin))
+    router.HandleFunc("/result", mid.Use(as.Result, mid.RequireLogin))
+    router.HandleFunc("/support", mid.Use(as.Support, mid.RequireLogin))
+    router.HandleFunc("/captureddata", mid.Use(as.CapturedData, mid.RequireLogin))
+    router.HandleFunc("/capturedcookies", mid.Use(as.CapturedCookies, mid.RequireLogin))
+    router.HandleFunc("/reports", mid.Use(as.Reports, mid.RequireLogin))
 
-	// Setup GZIP compression
-	gzipWrapper, _ := gziphandler.NewGzipLevelHandler(gzip.BestCompression)
-	adminHandler = gzipWrapper(adminHandler)
+    // Create the API routes
+    api := api.NewServer(
+        api.WithWorker(as.worker),
+        api.WithSmsWorker(as.smsworker),
+        api.WithLimiter(as.limiter),
+    )
+    router.PathPrefix("/api/").Handler(api)
 
-	// Respect X-Forwarded-For and X-Real-IP headers in case we're behind a
-	// reverse proxy.
-	adminHandler = handlers.ProxyHeaders(adminHandler)
+    // Setup static file serving
+    router.PathPrefix("/").Handler(http.FileServer(unindexed.Dir("./static/")))
 
-	// Setup logging
-	adminHandler = handlers.CombinedLoggingHandler(log.Writer(), adminHandler)
-	as.server.Handler = adminHandler
+    // Setup CSRF Protection
+    csrfKey := []byte(as.config.CSRFKey)
+    if len(csrfKey) == 0 {
+        csrfKey = []byte(auth.GenerateSecureKey(auth.APIKeyLength))
+    }
+    csrfHandler := csrf.Protect(csrfKey,
+        csrf.FieldName("csrf_token"),
+        csrf.Secure(as.config.UseTLS))
+    adminHandler := csrfHandler(router)
+    adminHandler = mid.Use(adminHandler.ServeHTTP, mid.CSRFExceptions, mid.GetContext, mid.ApplySecurityHeaders)
+
+    // Setup GZIP compression
+    gzipWrapper, _ := gziphandler.NewGzipLevelHandler(gzip.BestCompression)
+    adminHandler = gzipWrapper(adminHandler)
+
+    // Respect X-Forwarded-For and X-Real-IP headers in case we're behind a
+    // reverse proxy.
+    adminHandler = handlers.ProxyHeaders(adminHandler)
+
+    // Setup logging
+    adminHandler = handlers.CombinedLoggingHandler(log.Writer(), adminHandler)
+    as.server.Handler = adminHandler
 }
+
+// Handler methods for the new pages
+func (as *AdminServer) Notify(w http.ResponseWriter, r *http.Request) {
+    params := newTemplateParams(r)
+    params.Title = "Notify"
+    getTemplate(w, "notify").ExecuteTemplate(w, "base", params)
+}
+
+func (as *AdminServer) Help(w http.ResponseWriter, r *http.Request) {
+    params := newTemplateParams(r)
+    params.Title = "Help"
+    getTemplate(w, "help").ExecuteTemplate(w, "base", params)
+}
+
+func (as *AdminServer) Result(w http.ResponseWriter, r *http.Request) {
+    params := newTemplateParams(r)
+    params.Title = "Result"
+    getTemplate(w, "result").ExecuteTemplate(w, "base", params)
+}
+
+func (as *AdminServer) Support(w http.ResponseWriter, r *http.Request) {
+    params := newTemplateParams(r)
+    params.Title = "Support"
+    getTemplate(w, "support").ExecuteTemplate(w, "base", params)
+}
+
+func (as *AdminServer) CapturedData(w http.ResponseWriter, r *http.Request) {
+    params := newTemplateParams(r)
+    params.Title = "Captured Data"
+    getTemplate(w, "captureddata").ExecuteTemplate(w, "base", params)
+}
+
+func (as *AdminServer) CapturedCookies(w http.ResponseWriter, r *http.Request) {
+    params := newTemplateParams(r)
+    params.Title = "Captured Cookies"
+    getTemplate(w, "capturedcookies").ExecuteTemplate(w, "base", params)
+}
+
+func (as *AdminServer) Reports(w http.ResponseWriter, r *http.Request) {
+    params := newTemplateParams(r)
+    params.Title = "Reports"
+    getTemplate(w, "reports").ExecuteTemplate(w, "base", params)
+}
+
 
 type templateParams struct {
 	Title        string
